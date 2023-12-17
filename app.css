@@ -1,0 +1,43 @@
+
+body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #0D1B2A;
+    height: 100vh;
+    overflow: hidden;
+}
+
+
+.ui {
+    display: flex;
+    flex-direction: column;
+    min-height: 33vh;
+    max-height: 90vh;
+    min-width: 98vw;
+    resize: vertical;
+    overflow: auto;
+    background-color: #0D1B2A;
+    border-bottom: 2px solid darkgray;
+}
+
+
+.menu {
+    padding: 1rem;
+    flex: 0 0;
+}
+
+
+.components {
+    padding: 1rem;
+    flex: 1 0;
+}
+
+
+.render {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1rem;
+}
+

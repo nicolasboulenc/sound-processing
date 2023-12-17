@@ -1,0 +1,84 @@
+
+.component {
+    position: absolute;
+    background-color: #415A77;
+    border: 1px solid #E0E1DD;
+    color: #E0E1DD;
+    user-select: none;
+    width: 125px;
+}
+
+.component.selected {
+    border: 1px dashed #E0E1DD;
+}
+
+.component.rendering {
+    border: 1px solid #722F37;
+}
+
+.component > .title {
+    box-sizing: border-box;
+    top: 0px;
+    background-color: #1B263B;
+    font-weight: bold;
+    color: #778DA9;
+    width: 100%;
+    padding: .5rem;
+}
+
+.component input[type="range"] {
+    width: 100%;
+}
+
+.component > .connections {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: .25rem;
+}
+
+.input {
+    display: flex;
+    align-items: center;
+    margin-left: -7px;
+    margin-top: .25rem;
+}
+
+.input > .label {
+    margin-left: .25rem;
+}
+
+.output {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin-right: -7px;
+    margin-top: .25rem;
+}
+
+.output > .label {
+    margin-right: .25rem;
+}
+
+.connector {
+    box-sizing: content-box;
+    border-radius: 12px;
+    border: 1px solid #E0E1DD;
+    background-color: #ff8052;
+    width: 12px;
+    height: 12px;
+}
+
+.component > .params {
+    border-top: 1px solid #E0E1DD;
+    padding: .25rem;
+}
+
+.params > div {
+    display: flex;
+    overflow: hidden;
+}
+
+.params div div {
+    overflow: hidden;
+}
+
