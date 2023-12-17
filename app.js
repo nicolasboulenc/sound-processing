@@ -20,8 +20,7 @@ init()
 
 function init() {
 
-	app.canvas = document.getElementById('canvas')
-	app.ctx = canvas.getContext('2d')
+	app.ctx = new AudioContext()
 
 	const elems = document.querySelectorAll('[data-op]')
 	for(const elem of elems) {
@@ -63,11 +62,11 @@ function button_onclick(evt) {
 	let op = evt.currentTarget.dataset['op']
 
 	if(op === 'oscillator') {
-		const options = { id: generate_id(), callback: render }
+		const options = { id: generate_id(), ctx: app.ctx, callback: render }
 		node = new Node_Oscillator(options)
 	}
 	else if(op === 'output') {
-		const options = { id: generate_id(), callback: render }
+		const options = { id: generate_id(), ctx: app.ctx, callback: render }
 		node = new Node_Output(options)
 	}
 
@@ -79,11 +78,11 @@ function button_onclick(evt) {
 
 	app.nodes.push(node)
 
-	if(node !== null && app.nodes.length === 1) {
-		make_rendering(node.id)
-	}
+	// if(node !== null && app.nodes.length === 1) {
+	// 	make_rendering(node.id)
+	// }
 
-	render()
+	// render()
 }
 
 
@@ -229,12 +228,12 @@ function connector_onmouseup(evt) {
 
 	output_node.set_output(app.conn_start.dataset["name"], input_node)
 	input_node.set_input(name, output_node)
-	// input_node.process()
+	output_node.audio_node.connect(input_node.audio_node)
 	const line = new LeaderLine(conn_start, conn_end)
 	// app.lines.push(line)
 	app.connections.push({ output: output_node, input: input_node, line: line })
 	
-	document.querySelector(`svg > g > use[href="#leader-line-${line._id}-line-shape"]`).addEventListener("mousemove", evt=>console.log(evt))
+	// document.querySelector(`svg > g > use[href="#leader-line-${line._id}-line-shape"]`).addEventListener("mousemove", evt=>console.log(evt))
 
 
 	app.conn_start = null

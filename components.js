@@ -8,6 +8,7 @@ class Node_Template {
 	constructor(options = {}) {
 
 		this.#id = ""				// id of the html element
+		this.audio_node = null
 		this.callback = null		// called when?
 		this.elem = null			// the html element
 		this.input_nodes = {}		// { "input_name": node_object } e.g. { "" }
@@ -133,9 +134,13 @@ class Node_Oscillator extends Node_Template {
 	constructor(options = {}) {
 		options.connections = [{type: "output", name: "output"}]
 		super(options)
-		
-		this.current = ""
-		this.build({title: "Oscillator"})
+
+		this.audio_node = new OscillatorNode(options.ctx)
+		this.audio_node.frequency.value = 440
+		this.audio_node.type = "sine"
+		this.audio_node.start()
+
+		this.build({ title: "Oscillator" })
 		this.build_params()
 	}
 
@@ -144,34 +149,78 @@ class Node_Oscillator extends Node_Template {
 		const prms = this.elem.querySelector(".params")
 
 		// freq
-		const div = document.createElement("div")
-		const id = `id-${Math.floor(Math.random() * 1000000)}`
+		let div = document.createElement("div")
 
-		const label = document.createElement("label")
-		label.setAttribute("for", id)
+		let label = document.createElement("label")
 		label.textContent = "Freq"
 		div.appendChild(label)
 
-		const input = document.createElement("input")
-		input.setAttribute("type", "range")
-		input.setAttribute("id", id)
+		let input = document.createElement("select")
+		const frequencies = [
+			{ n: "c4",	f: 261.63 },
+			{ n: "c#4", f: 277.18 },
+			{ n: "d4",	f: 293.66 },
+			{ n: "d#4",	f: 311.13 },
+			{ n: "e4",	f: 329.63 },
+			{ n: "f4",	f: 349.43 },
+			{ n: "f#4", f: 369.99 },
+			{ n: "g4",	f: 392.00 },
+			{ n: "g#4", f: 415.30 },
+			{ n: "a4",	f: 440.00 },
+			{ n: "a#4", f: 466.16 },
+			{ n: "b4",	f: 493.88 },
+		]
+		for(const f of frequencies) {
+			let option = document.createElement("option")
+			option.setAttribute("value", f.f)
+			option.innerHTML = f.n
+			input.appendChild(option)
+		}		
 		input.addEventListener("change", this.param_onchange.bind(this))
 		div.appendChild(input)
+		prms.appendChild(div)
 
+		// detune
+		div = document.createElement("div")
+		// id = `id-${Math.floor(Math.random() * 1000000)}`
+
+		label = document.createElement("label")
+		label.textContent = "Detune"
+		div.appendChild(label)
+
+		input = document.createElement("input")
+		input.setAttribute("type", "range")
+		// input.setAttribute("id", id)
+		input.addEventListener("change", this.param_onchange.bind(this))
+		div.appendChild(input)
+		prms.appendChild(div)
+
+		// type
+		div = document.createElement("div")
+		// id = `id-${Math.floor(Math.random() * 1000000)}`
+
+		label = document.createElement("label")
+		// label.setAttribute("for", id)
+		label.textContent = "Type"
+		div.appendChild(label)
+
+		input = document.createElement("select")
+		// input.setAttribute("id", id)
+		const types = ["sine", "square", "sawtouth", "triangle"]
+		for(const type of types) {
+			let option = document.createElement("option")
+			option.setAttribute("value", type)
+			option.innerHTML = type
+			input.appendChild(option)
+		}
+		input.addEventListener("change", this.param_onchange.bind(this))
+		div.appendChild(input)
 		prms.appendChild(div)
 	}
 
 	param_onchange(evt) {
 		
-		if(this.current === evt.currentTarget.value) return
-
-		const elems = this.elem.querySelectorAll(`[data-radio="image-src"]`)
-		for(let elem of elems) {
-			elem.checked = false
-		}
-		evt.currentTarget.checked = true
-		this.current = evt.currentTarget.value
-		this.image_load(evt.currentTarget.value)
+		console.log(evt.currentTarget.value)
 	}
 }
 
@@ -179,10 +228,10 @@ class Node_Oscillator extends Node_Template {
 class Node_Output extends Node_Template {
 
 	constructor(options = {}) {
-		options.connections = [{type: "input", name: "input"}]
+		options.connections = [{ type: "input", name: "input" }]
 		super(options)
-		
-		this.build({title: "Output"})
+		this.audio_node = options.ctx.destination
+		this.build({ title: "Output" })
 	}
 }
 
