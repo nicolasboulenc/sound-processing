@@ -10,9 +10,17 @@ document.querySelector("#play2").addEventListener("click", play2)
 const sound_length = .5
 const sound = { osc: null, gain: null, attack: 0.05, decay: 0.02, sustain: 0.48, release: 0.45 }
 
-function start() {
-    audio_ctx = new AudioContext()
+let kick = null
 
+
+function start() {
+    audio_ctx = new AudioContext({latecyHint: "Interactive", sampleRare: 44100.0})
+    
+    console.log(audio_ctx.sampleRate)
+    console.log(audio_ctx.destination.channelCount);
+    
+    kick = new Kick(audio_ctx)
+    
     // create Oscillator node
     sound.osc = audio_ctx.createOscillator()
     sound.osc.type = "sawtooth"
@@ -24,25 +32,14 @@ function start() {
 
     sound.osc.connect(sound.gain)
     sound.gain.connect(audio_ctx.destination)
-
-
-    // this.osc.frequency.setValueAtTime(150, time);
-    // this.gain.gain.setValueAtTime(1, time);
-  
-    // this.osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.5);
-    // this.gain.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
-  
-    // this.osc.start(time);
-  
-    // this.osc.stop(time + 0.5);
-
-
 }
 
 
 function play1() {
-
+    
     const now = audio_ctx.currentTime
+    kick.trigger(now)
+    return
 
     sound.gain.gain.setValueAtTime(0, audio_ctx.currentTime)
     
@@ -61,7 +58,16 @@ function play1() {
 
 function play2() {
 
-    const now = audio_ctx.currentTime
-    sound.gain.gain.setValueAtTime(1.0, audio_ctx.currentTime)
-    sound.gain.gain.setValueAtTime(0.0, now + sound_length)
+    const time = audio_ctx.currentTime
+    sound.osc.frequency.setValueAtTime(150, time);
+    sound.gain.gain.setValueAtTime(1, time);
+
+    sound.osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.5);
+    sound.gain.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
+
+    sound.osc.start(time);
+    sound.osc.stop(time + 0.5);
+ 
+    // sound.gain.gain.setValueAtTime(1.0, audio_ctx.currentTime)
+    // sound.gain.gain.setValueAtTime(0.0, now + sound_length)
 }
