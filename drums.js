@@ -12,7 +12,7 @@ Kick.prototype.setup = function() {
 Kick.prototype.trigger = function(time) {
   this.setup();
 
-  this.osc.frequency.setValueAtTime(150, time);
+  this.osc.frequency.setValueAtTime(500, time);
   this.gain.gain.setValueAtTime(1, time);
 
   this.osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.5);
