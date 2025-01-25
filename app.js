@@ -65,6 +65,18 @@ function button_onclick(evt) {
 		const options = { id: generate_id(), ctx: app.ctx, callback: render }
 		node = new Node_Oscillator(options)
 	}
+	else if(op === 'gain') {
+		const options = { id: generate_id(), ctx: app.ctx, callback: render }
+		node = new Node_Gain(options)
+	}
+	else if(op === 'media-element-source') {
+		const options = { id: generate_id(), ctx: app.ctx, callback: render }
+		node = new Node_MediaElementSource(options)
+	}
+	else if(op === 'channel-merger') {
+		const options = { id: generate_id(), ctx: app.ctx, inputs_count: 3, callback: render }
+		node = new Node_ChannelMerger(options)
+	}
 	else if(op === 'output') {
 		const options = { id: generate_id(), ctx: app.ctx, callback: render }
 		node = new Node_Output(options)

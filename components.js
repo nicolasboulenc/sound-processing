@@ -8,6 +8,7 @@ class Node_Template {
 	constructor(options = {}) {
 
 		this.#id = ""				// id of the html element
+		this.audio_ctx = null
 		this.audio_node = null
 		this.callback = null		// called when?
 		this.elem = null			// the html element
@@ -17,6 +18,10 @@ class Node_Template {
 
 		if(typeof options.id !== "undefined") {
 			this.#id = options.id
+		}
+
+		if(typeof options.ctx !== "undefined") {
+			this.audio_ctx = options.ctx
 		}
 
 		if(typeof options.callback !== "undefined") {
@@ -177,12 +182,12 @@ class Node_Oscillator extends Node_Template {
 			input.appendChild(option)
 		}		
 		input.addEventListener("change", this.param_onchange.bind(this))
+		input.dataset.param_type = "freq"
 		div.appendChild(input)
 		prms.appendChild(div)
 
 		// detune
 		div = document.createElement("div")
-		// id = `id-${Math.floor(Math.random() * 1000000)}`
 
 		label = document.createElement("label")
 		label.textContent = "Detune"
@@ -190,23 +195,25 @@ class Node_Oscillator extends Node_Template {
 
 		input = document.createElement("input")
 		input.setAttribute("type", "range")
-		// input.setAttribute("id", id)
-		input.addEventListener("change", this.param_onchange.bind(this))
+		input.setAttribute("min", -100)
+		input.setAttribute("max", 100)
+		input.setAttribute("step", 1)
+		input.dataset.param_type = "detune"
+		input.value = this.audio_node.detune.value
+		input.addEventListener("input", this.param_onchange.bind(this))
 		div.appendChild(input)
 		prms.appendChild(div)
 
 		// type
 		div = document.createElement("div")
-		// id = `id-${Math.floor(Math.random() * 1000000)}`
 
 		label = document.createElement("label")
-		// label.setAttribute("for", id)
 		label.textContent = "Type"
 		div.appendChild(label)
 
 		input = document.createElement("select")
-		// input.setAttribute("id", id)
-		const types = ["sine", "square", "sawtouth", "triangle"]
+		input.dataset.param_type = "type"
+		const types = ["sine", "square", "sawtooth", "triangle"]
 		for(const type of types) {
 			let option = document.createElement("option")
 			option.setAttribute("value", type)
@@ -219,10 +226,117 @@ class Node_Oscillator extends Node_Template {
 	}
 
 	param_onchange(evt) {
-		
-		console.log(evt.currentTarget.value)
+		const param_type = evt.currentTarget.dataset.param_type
+		const param_value = evt.currentTarget.value 
+		if(param_type === "freq") {
+			this.audio_node.frequency.value = param_value
+		}
+		else if(param_type === "detune") {
+			this.audio_node.detune.value = param_value
+		}
+		else if(param_type === "type") {
+			this.audio_node.type = param_value
+		}
 	}
 }
+
+
+class Node_Gain extends Node_Template {
+
+	constructor(options = {}) {
+		options.connections = [{type: "input", name: "input"}, {type: "output", name: "output"}]
+		super(options)
+
+		this.audio_node = new GainNode(options.ctx)
+
+		this.build({ title: "Gain" })
+		this.build_params()
+	}
+
+	build_params() {
+
+		const prms = this.elem.querySelector(".params")
+
+		// detune
+		let div = document.createElement("div")
+
+		let label = document.createElement("label")
+		label.textContent = "Gain"
+		div.appendChild(label)
+
+		let input = document.createElement("input")
+		input.setAttribute("type", "range")
+		input.setAttribute("min", 0)
+		input.setAttribute("max", 1)
+		input.setAttribute("step", 0.1)
+		input.addEventListener("input", this.param_onchange.bind(this))
+		div.appendChild(input)
+		prms.appendChild(div)
+	}
+
+	param_onchange(evt) {
+		console.log(evt.currentTarget.value)
+		this.audio_node.gain.setValueAtTime(evt.currentTarget.value, this.audio_ctx.currentTime)
+	}
+}
+
+
+class Node_MediaElementSource extends Node_Template {
+
+	constructor(options = {}) {
+		options.connections = [{type: "output", name: "output"}]
+		super(options)
+
+		this.build({ title: "MESource" })
+		this.build_params()
+
+		const elem = this.elem.querySelector("audio")
+		options.mediaElement = elem
+		this.audio_node = new MediaElementAudioSourceNode(options.ctx, options)
+	}
+
+	build_params() {
+
+		const prms = this.elem.querySelector(".params")
+
+		let div = document.createElement("div")
+
+		let label = document.createElement("label")
+		label.textContent = "Source"
+		div.appendChild(label)
+
+		let audio = document.createElement("audio")
+		audio.setAttribute("type", "range")
+		audio.setAttribute("controls", true)
+		audio.setAttribute("src", "IMSLP197806-PMLP02397-3-ClairDeLune-j.mp3")
+		div.appendChild(audio)
+		prms.appendChild(div)
+	}
+}
+
+
+class Node_ChannelMerger extends Node_Template {
+
+	constructor(options = {}) {
+
+		const inputs_count = (typeof options.inputs_count !== "undefined" ? options.inputs_count : 3)
+		options.numberOfInputs = inputs_count;
+
+		options.connections = []
+		for(let i=0; i< inputs_count; i++) {
+			options.connections.push({type: "input", name: `input ${i}`})
+		}
+		options.connections.push({type: "output", name: "output"})
+		super(options)
+
+		this.audio_node = new ChannelMergerNode(options.ctx, options)
+
+		this.build({ title: "Channel Merger" })
+	}
+}
+
+
+
 
 
 class Node_Output extends Node_Template {
@@ -230,7 +344,7 @@ class Node_Output extends Node_Template {
 	constructor(options = {}) {
 		options.connections = [{ type: "input", name: "input" }]
 		super(options)
-		this.audio_node = options.ctx.destination
+		this.audio_node = this.audio_ctx.destination
 		this.build({ title: "Output" })
 	}
 }
