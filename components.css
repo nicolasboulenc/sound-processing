@@ -18,7 +18,6 @@
 
 .component > .title {
     box-sizing: border-box;
-    top: 0px;
     background-color: #1B263B;
     font-weight: bold;
     color: #778DA9;
@@ -36,7 +35,7 @@
     margin-bottom: .25rem;
 }
 
-.input {
+.component > .connections > .input {
     display: flex;
     align-items: center;
     margin-left: -7px;
@@ -47,7 +46,7 @@
     margin-left: .25rem;
 }
 
-.output {
+.component > .connections > .output {
     display: flex;
     align-items: center;
     justify-content: flex-end;
@@ -76,9 +75,10 @@
 .params > div {
     display: flex;
     overflow: hidden;
+    justify-content: space-between;
 }
 
-.params div div {
+/* .params div div {
     overflow: hidden;
-}
+} */
 

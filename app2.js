@@ -3,9 +3,7 @@
 const app = {
 	scale: 1,
 	canvas: null,
-	ctx: null,
 	nodes: [],
-	id: 0,
 	selected_node: null,
 	rendering_node: null,
 	conn_start:  null,
@@ -19,8 +17,6 @@ init()
 
 
 function init() {
-
-	app.ctx = new AudioContext()
 
 	const elems = document.querySelectorAll('[data-op]')
 	for(const elem of elems) {
@@ -61,30 +57,27 @@ function button_onclick(evt) {
 	let node = null
 	let op = evt.currentTarget.dataset['op']
 
-	if(op === 'oscillator') {
-		const options = { id: generate_id(), ctx: app.ctx, callback: render }
-		node = new Node_Oscillator(options)
+	let options = {}
+	if(op === "oscillator") {
+		options = { class: "oscillator" }
 	}
-	else if(op === 'gain') {
-		const options = { id: generate_id(), ctx: app.ctx, callback: render }
-		node = new Node_Gain(options)
+	else if(op === "gain") {
+		options = { class: "gain" }
 	}
-	else if(op === 'media-element-source') {
-		const options = { id: generate_id(), ctx: app.ctx, callback: render }
-		node = new Node_MediaElementSource(options)
+	else if(op === "media-element-source") {
+		options = { class: "media-source" }
 	}
-	else if(op === 'channel-merger') {
-		const options = { id: generate_id(), ctx: app.ctx, inputs_count: 3, callback: render }
-		node = new Node_ChannelMerger(options)
+	else if(op === "channel-merger") {
+		options = { class: "channel-merger" }
 	}
-	else if(op === 'analyser') {
-		const options = { id: generate_id(), ctx: app.ctx, callback: render }
-		node = new Node_Analyser(options)
+	else if(op === "analyser") {
+		options = {  class: "analyser" }
 	}
-	else if(op === 'output') {
-		const options = { id: generate_id(), ctx: app.ctx, callback: render }
-		node = new Node_Output(options)
+	else if(op === "output") {
+		options = { class: "output" }
 	}
+	node = node_create(options)
+
 
 	document.querySelector('.components').append(node.elem)
 
@@ -100,36 +93,6 @@ function button_onclick(evt) {
 
 	// render()
 }
-
-
-function render(node=null) {
-
-	if(app.rendering_node === null) return
-
-	// process all nodes after 'node changed'
-	process(node)
-	process(app.rendering_node)
-
-	const buffer = app.rendering_node.get_output()
-	if(buffer === null) return
-
-	app.canvas.width = buffer.width / app.scale
-	app.canvas.height = buffer.height / app.scale
-	app.ctx.putImageData(buffer, 0, 0)
-}
-
-
-function process(probe) {
-
-	if(probe === null) return
-
-	probe.process()
-	const outputs = probe.get_outputs()
-	for(const node of outputs) {
-		process(node)
-	}
-}
-
 
 function make_selected(id) {
 
@@ -166,11 +129,6 @@ function make_rendering(id) {
 	}
 
 	app.rendering_node.elem.classList.add("rendering")
-}
-
-
-function generate_id() {
-	return `c${ (''+app.id++).padStart(2, '0')}`
 }
 
 
@@ -230,7 +188,7 @@ function connector_onmouseup(evt) {
 
 	const name = evt.currentTarget.dataset['name']
 
-	const curr_input = input_node.get_input(name)
+	const curr_input = node_get_input(input_node, name)
 	if(curr_input !== null && curr_input.id === output_node.id) {
 		console.log('same connection')
 		app.conn_start = null
@@ -242,8 +200,8 @@ function connector_onmouseup(evt) {
 		console.error('re-connect')
 	}
 
-	output_node.set_output(app.conn_start.dataset["name"], input_node)
-	input_node.set_input(name, output_node)
+	node_set_output(output_node, app.conn_start.dataset["name"], input_node)
+	node_set_input(input_node, name, output_node)
 	output_node.audio_node.connect(input_node.audio_node)
 	const line = new LeaderLine(conn_start, conn_end)
 	// app.lines.push(line)
@@ -255,8 +213,6 @@ function connector_onmouseup(evt) {
 	app.conn_start = null
 	app.conn_line.remove()
 	app.conn_line = null
-
-	render()
 }
 
 
@@ -289,11 +245,6 @@ function window_onkeypressed(evt) {
 		// remove svg lines
 		// remove connections to and from other nodes
 
-	}
-
-	if(evt.code === "KeyR") {
-		make_rendering(app.selected_node.id)
-		render()
 	}
 }
 

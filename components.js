@@ -336,7 +336,37 @@ class Node_ChannelMerger extends Node_Template {
 }
 
 
+class Node_Analyser extends Node_Template {
 
+	constructor(options = {}) {
+
+		options.connections = []
+		options.connections.push({type: "input", name: "input"})
+		options.connections.push({type: "output", name: "output"})
+		super(options)
+
+		this.audio_node = new AnalyserNode(options.ctx, options)
+
+		this.build({ title: "Analyser" })
+		this.build_params()
+	}
+
+	build_params() {
+
+		const prms = this.elem.querySelector(".params")
+
+		let div = document.createElement("div")
+
+		let label = document.createElement("label")
+		label.textContent = "Waveform"
+		div.appendChild(label)
+
+		let canvas = document.createElement("canvas")
+		div.appendChild(canvas)
+		prms.appendChild(div)
+	}
+
+}
 
 
 class Node_Output extends Node_Template {
