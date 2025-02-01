@@ -1,11 +1,5 @@
 "use strict";
 
-const audio_env = {
-	next_id: 0,
-	ctx: null,
-	nodes: new Map()
-}
-
 const NODE_BASE = `
 	<div class="title"></div>
 	<div class="connections"></div>
@@ -54,21 +48,42 @@ const NODE_GAIN = `
 	<div><input type="range" min="0" max="1" step="0.1" data-param="gain"></input></div>
 </div>`
 
+const NODE_MEDIAELEMENTSOURCE = `
+<div class="param">
+	<div>Gain</div>
+	<div><audio controls="true" src="IMSLP197806-PMLP02397-3-ClairDeLune-j.mp3"></audio></div>
+</div>`
 
-function node_create(options = {}) {
+const NODE_CHANNELMERGER = ``
+
+
+function env_create() {
+	
+	const env = {
+		next_id: 0,
+		ctx: null,
+		nodes: null
+	}
+
+	env.ctx = new AudioContext()
+	env.nodes = new Map()
+	return env
+}
+
+
+function node_create(env, options = {}) {
 
 	if(typeof options.class === "undefined") {
 		return
 	}
 
-	if(audio_env.ctx === null) {
-		audio_env.ctx = new AudioContext()
+	if(env.ctx.state === "suspended") {
+		env.ctx.resume()
 	}
 
 	const node = {
 		id: "",					// id of the html element
 		class: "",
-		audio_ctx: null,
 		audio_node: null,
 		elem: null,				// the html element
 		input_nodes: {},		// { "input_name": node_object } e.g. { "" }
@@ -76,39 +91,55 @@ function node_create(options = {}) {
 		outputs: { "default": null }
 	}
 
-	const ctx = audio_env.ctx
-	const id = generate_id(audio_env)
-	const destination = audio_env.ctx.destination
-	audio_env.nodes.set(id, node)
-
-	node.id = id
-	node.audio_ctx = ctx
+	
+	node.id = generate_id(env)
 	node.class = options.class
 	node.elem = document.createElement("div")
-	node.elem.id = id
+	node.elem.id = node.id
 	node.elem.classList.add("component")
 	node.elem.classList.add(options.class)
 	node.elem.innerHTML = NODE_BASE
+	env.nodes.set(node.id, node)
 
 	const title = options.class.charAt(0).toUpperCase() + options.class.slice(1)
 	node.elem.querySelector(".title").innerHTML = title
 
 	// process specific to classes
 	if(options.class === "oscillator") {
-		options.connections = [{type: "output", name: "output"}]
-		node.audio_node = new OscillatorNode(ctx)
+		node.elem.querySelector(".params").innerHTML = NODE_OSCILLATOR
+		options.connections = [{type: "output", name: "output", num: 0}]
+		node.audio_node = new OscillatorNode(env.ctx)
 		node.audio_node.frequency.value = 440
 		node.audio_node.type = "sine"
 		node.audio_node.start()
 	}
 	else if(options.class === "gain") {
-		options.connections = [{type: "input", name: "input"}, {type: "output", name: "output"}]
-		node.audio_node = new GainNode(ctx)
+		node.elem.querySelector(".params").innerHTML = NODE_GAIN
+		node.audio_node = new GainNode(env.ctx)
 		node.audio_node.gain.value = 1
+		options.connections = [{type: "input", name: "input", num: 0}, {type: "output", name: "output", num: 0}]
+	}
+	else if(options.class === "channel-merger") {
+		node.elem.querySelector(".params").innerHTML = NODE_CHANNELMERGER
+		node.audio_node = new ChannelMergerNode(env.ctx, { numberOfInputs: 2 })
+		options.connections = [{type: "input", name: "input0", num: 0}, {type: "input", name: "input1", num: 1}, {type: "output", name: "output", num: 0}]
+	}
+	else if(options.class === "media-element-source") {
+		node.elem.querySelector(".params").innerHTML = NODE_MEDIAELEMENTSOURCE
+		options.connections = [{type: "output", name: "output", num: 0}]
+		const media_elem = node.elem.querySelector("audio")
+		node.audio_node = new MediaElementAudioSourceNode(env.ctx, { mediaElement: media_elem })
 	}
 	else if(options.class === "output") {
-		options.connections = [{type: "input", name: "input"}]
-		node.audio_node = destination
+		options.connections = [{type: "input", name: "input", num: 0}]
+		node.audio_node = env.ctx.destination
+	}
+
+	// add event listeners to params
+	let params = node.elem.querySelectorAll(".params [data-param]")
+	for(let param of params) {
+		param.dataset["id"] = node.id
+		param.addEventListener("input", node_on_event.bind(env))
 	}
 
 	// process inputs / outputs
@@ -118,80 +149,48 @@ function node_create(options = {}) {
 	for(const conn of options.connections) {
 		if(conn.type === "input") {
 			node.input_nodes[conn.name] = null
-			html_conn += `<div class="input"><div class="connector" data-id="${node.id}" data-type="input" data-name="${conn.name}"></div><div class="label">${conn.name}</div></div>`
+			html_conn += `<div class="input"><div class="connector" data-id="${node.id}" data-type="input" data-name="${conn.name}" data-num="${conn.num}"></div><div class="label">${conn.name}</div></div>`
 		}
 		else if(conn.type === "output") {
 			node.output_nodes[conn.name] = null
-			html_conn += `<div class="output"><div class="label">${conn.name}</div><div class="connector" data-id="${node.id}" data-type="output" data-name="${conn.name}"></div></div>`
+			html_conn += `<div class="output"><div class="label">${conn.name}</div><div class="connector" data-id="${node.id}" data-type="output" data-name="${conn.name}" data-num="${conn.num}"></div></div>`
 		}
 	}
 	node.elem.querySelector(".connections").innerHTML = html_conn
-
-	// process html and event listeners
-	if(options.class === "oscillator") {
-		node.elem.querySelector(".params").innerHTML = NODE_OSCILLATOR
-		// should select the default options value
-	}
-	else if(options.class === "gain") {
-		node.elem.querySelector(".params").innerHTML = NODE_GAIN
-	}
-
-	let params = node.elem.querySelectorAll(".params [data-param]")
-	for(let param of params) {
-		param.dataset["id"] = node.id
-		param.addEventListener("input", node_on_event)
-	}
 
 	return node
 }
 
 
-function node_get_input(node, name) {
-	return node.input_nodes[name]
+function node_connect(env, node_src_id, node_dst_id, output_num=0, input_num=0) {
+
+	const node_src = env.nodes.get(node_src_id)
+	const node_dst = env.nodes.get(node_dst_id)
+	node_src.audio_node.connect(node_dst.audio_node, output_num, input_num)
 }
 
-function node_set_input(inode, name, node) {
-	if(typeof inode.input_nodes[name] !== "undefined") {
-		inode.input_nodes[name] = node
-	}
+
+function node_disconnect(env, node_id) {
+
+	const node = env.nodes.get(node_id)
+	node.audio_node.disconnect()
 }
 
-function node_get_output(node, for_node=null) {
-
-	if(for_node === null) return node.outputs["default"] 
-
-	const names = Object.getOwnPropertyNames(node.output_nodes)
-	for(const name of names) {
-		if(node.output_nodes[name] === for_node) {
-			return node.outputs[name]
-		}
-	}
-	return node.outputs["default"]
-}
-
-function node_set_output(inode, name, node) {
-	if(typeof inode.output_nodes[name] !== "undefined") {
-		inode.output_nodes[name] = node
-	}
-}
-
-function node_get_outputs(node) {
-	return Object.values(node.output_nodes)
-}
 
 function node_on_event(evt) {
 
-	const id = evt.currentTarget.dataset["id"]
-	const node = audio_env.nodes.get(id)
+	const env = this
+	const id = evt.currentTarget.dataset.id
+	const node = env.nodes.get(id)
 	const param = evt.currentTarget.dataset.param
 	const value = evt.currentTarget.value 
 
 	if(node.class === "oscillator") {
 		if(param === "freq") {
-			node.audio_node.frequency.setValueAtTime(value, node.audio_ctx.currentTime)
+			node.audio_node.frequency.setValueAtTime(value, node.audio_node.context.currentTime)
 		}
 		else if(param === "detune") {
-			node.audio_node.detune.setValueAtTime(value, node.audio_ctx.currentTime)
+			node.audio_node.detune.setValueAtTime(value, node.audio_node.context.currentTime)
 		}
 		else if(param === "type") {
 			node.audio_node.type = value
@@ -199,12 +198,13 @@ function node_on_event(evt) {
 	}
 	else if(node.class === "gain") {
 		if(param === "gain") {
-			node.audio_node.gain.setValueAtTime(value, node.audio_ctx.currentTime)
+			node.audio_node.gain.setValueAtTime(value, node.audio_node.context.currentTime)
 		}
 	}
-
 }
+
 
 function generate_id(env) {
 	return `c${ (''+env.next_id++).padStart(2, '0')}`
 }
+

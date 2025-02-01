@@ -1,22 +1,21 @@
 'use strict';
 
 const app = {
-	scale: 1,
-	canvas: null,
-	nodes: [],
-	selected_node: null,
-	rendering_node: null,
-	conn_start:  null,
-	conn_line : null,
 	draggables: [],
-	connections: []
+	connections: [],
+	audio_env: null,
+	selected_node: null,
+	connection_src:  null,
+	connection_line : null,
 }
 
 
-init()
+init(app)
 
 
-function init() {
+function init(app) {
+
+	app.audio_env = env_create()
 
 	const elems = document.querySelectorAll('[data-op]')
 	for(const elem of elems) {
@@ -26,6 +25,41 @@ function init() {
 	document.addEventListener('keypress', window_onkeypressed)
 	window.addEventListener('mouseup', window_onmouseup)
 	window.addEventListener('mousemove', window_onmousemove)
+}
+
+
+function button_onclick(evt) {
+
+	let node = null
+	let op = evt.currentTarget.dataset.op
+
+	let options = {}
+	if(op === "oscillator") {
+		options = { class: "oscillator" }
+	}
+	else if(op === "gain") {
+		options = { class: "gain" }
+	}
+	else if(op === "media-element-source") {
+		options = { class: "media-element-source" }
+	}
+	else if(op === "channel-merger") {
+		options = { class: "channel-merger" }
+	}
+	else if(op === "analyser") {
+		options = {  class: "analyser" }
+	}
+	else if(op === "output") {
+		options = { class: "output" }
+	}
+	node = node_create(app.audio_env, options)
+
+
+	document.querySelector('.components').append(node.elem)
+
+	node.elem.addEventListener('mousedown', node_onmousedown)
+	make_draggable(node)
+	make_connectable(node)
 }
 
 
@@ -52,48 +86,6 @@ function make_connectable(node) {
 }
 
 
-function button_onclick(evt) {
-
-	let node = null
-	let op = evt.currentTarget.dataset['op']
-
-	let options = {}
-	if(op === "oscillator") {
-		options = { class: "oscillator" }
-	}
-	else if(op === "gain") {
-		options = { class: "gain" }
-	}
-	else if(op === "media-element-source") {
-		options = { class: "media-source" }
-	}
-	else if(op === "channel-merger") {
-		options = { class: "channel-merger" }
-	}
-	else if(op === "analyser") {
-		options = {  class: "analyser" }
-	}
-	else if(op === "output") {
-		options = { class: "output" }
-	}
-	node = node_create(options)
-
-
-	document.querySelector('.components').append(node.elem)
-
-	node.elem.addEventListener('mousedown', node_onmousedown)
-	make_draggable(node)
-	make_connectable(node)
-
-	app.nodes.push(node)
-
-	// if(node !== null && app.nodes.length === 1) {
-	// 	make_rendering(node.id)
-	// }
-
-	// render()
-}
-
 function make_selected(id) {
 
 	if(app.selected_node !== null && app.selected_node.id === id) return
@@ -102,33 +94,8 @@ function make_selected(id) {
 		app.selected_node.elem.classList.remove("selected")
 	}
 
-	for(const node of app.nodes) {
-		if(node.id === id) {
-			app.selected_node = node
-			break
-		}
-	}
-
+	app.selected_node = app.audio_env.nodes.get(id)
 	app.selected_node.elem.classList.add("selected")
-}
-
-
-function make_rendering(id) {
-
-	if(app.rendering_node !== null && app.rendering_node.id === id) return
-	
-	if(app.rendering_node !== null) {
-		app.rendering_node.elem.classList.remove("rendering")
-	}
-
-	for(const node of app.nodes) {
-		if(node.id === id) {
-			app.rendering_node = node
-			break
-		}
-	}
-
-	app.rendering_node.elem.classList.add("rendering")
 }
 
 
@@ -137,101 +104,110 @@ function connector_onmousedown(evt) {
 	// to stop component dragging from connector
 	evt.stopImmediatePropagation()
 
-	if(evt.currentTarget.dataset["type"] === "input") {
+	const connector = evt.currentTarget
+	const connector_type = connector.dataset.type 
+	const connector_is_connected = (evt.currentTarget.dataset.is_connected === "y") 
+
+	if(	( connector_type === "output" && connector_is_connected === true ) ||
+		( connector_type === "input" && connector_is_connected === false ) ) {
 		return;
 	}
 
-	app.conn_start = evt.currentTarget
-	const attach = LeaderLine.pointAnchor(document.body, {x: evt.clientX, y: evt.clientY})
-	app.conn_line = new LeaderLine(app.conn_start, attach, {dash: {animation: true}})
+	if(connector_type === "output") {
+		// clicked on output not already connected 
+		app.connection_src = connector
+		const attach = LeaderLine.pointAnchor(document.body, {x: evt.clientX, y: evt.clientY})
+		app.connection_line = new LeaderLine(app.connection_src, attach, {dash: {animation: true}})
+	}
+	else {
+		// clicked on input already connected 
+		let i=0
+		while(i < app.connections.length) {
+			if(app.connections[i].dst_id === connector.dataset.id && app.connections[i].dst_num === connector.dataset.num) break
+			i++
+		}
+
+		const src_id = app.connections[i].src_id
+		const src_num = app.connections[i].src_num
+		const line = app.connections[i].line
+		// remove connection and disconnect
+		connector.dataset.is_connected = "n"
+		app.connections.splice(i, 1)
+		node_disconnect(app.audio_env, src_id)
+
+		app.connection_src = document.querySelector(`.connector[data-id="${src_id}"][data-type="output"][data-num="${src_num}"]`)
+		app.connection_src.dataset.is_connected = "n"
+		app.connection_line = line
+	}
 }
 
 
 function connector_onmouseup(evt) {
 
-	const conn_end = evt.currentTarget
-	const conn_start = app.conn_start
+	if(app.connection_src === null) return
 
-	if(app.conn_start === null) return
+	const connection_dst = evt.currentTarget
+	let early_exit = false
 
-	if(conn_start.dataset.type === conn_end.dataset.type) {
-		console.log('same type')
-		app.conn_start = null
-		app.conn_line.remove()
-		app.conn_line = null
-		return	
+	if(connection_dst.is_connected === "y") {
+		console.log("Info: Cannot connect 2 sources to the same destination.")
+		app.connection_src.dataset.is_connected = "n"
+		early_exit = true
+	}
+	
+	if(app.connection_src.dataset.type === connection_dst.dataset.type) {
+		console.log("Info: trying to connect input->input or output->ouput.")
+		app.connection_src.dataset.is_connected = "n"
+		early_exit = true
+	}
+	
+	if(app.connection_src.dataset.id === connection_dst.dataset.id) {
+		console.log("Info: trying to connect node to itself.")
+		early_exit = true
 	}
 
-	if(conn_start.dataset.id === conn_end.dataset.id) {
-		console.log('same id')
-		app.conn_start = null
-		app.conn_line.remove()
-		app.conn_line = null
-		return	
-	}
-
-	let input_node = null
-	for(const node of app.nodes) {
-		if(node.id === conn_end.dataset.id) {
-			input_node = node
-			break
-		}
-	}
-
-	let output_node = null
-	for(const node of app.nodes) {
-		if(node.id === conn_start.dataset.id) {
-			output_node = node
-			break
-		}
-	}
-
-	const name = evt.currentTarget.dataset['name']
-
-	const curr_input = node_get_input(input_node, name)
-	if(curr_input !== null && curr_input.id === output_node.id) {
-		console.log('same connection')
-		app.conn_start = null
-		app.conn_line.remove()
-		app.conn_line = null
+	if(early_exit === true) {
+		app.connection_src.dataset.is_connected = "n"
+		app.connection_src = null
+		app.connection_line.remove()
+		app.connection_line = null
 		return
 	}
-	else if(curr_input !== null) {
-		console.error('re-connect')
-	}
 
-	node_set_output(output_node, app.conn_start.dataset["name"], input_node)
-	node_set_input(input_node, name, output_node)
-	output_node.audio_node.connect(input_node.audio_node)
-	const line = new LeaderLine(conn_start, conn_end)
-	// app.lines.push(line)
-	app.connections.push({ output: output_node, input: input_node, line: line })
-	
-	// document.querySelector(`svg > g > use[href="#leader-line-${line._id}-line-shape"]`).addEventListener("mousemove", evt=>console.log(evt))
+	const src_id = app.connection_src.dataset.id
+	const src_num = app.connection_src.dataset.num
+	const dst_id = connection_dst.dataset.id
+	const dst_num = connection_dst.dataset.num
+	node_connect(app.audio_env, src_id, dst_id, src_num, dst_num)
 
+	const line = new LeaderLine(app.connection_src, connection_dst)
+	app.connections.push({ src_id: src_id, src_num: src_num, dst_id: dst_id, dst_num: dst_num, line: line })
 
-	app.conn_start = null
-	app.conn_line.remove()
-	app.conn_line = null
+	app.connection_src.dataset.is_connected = "y"
+	connection_dst.dataset.is_connected = "y"
+
+	app.connection_src = null
+	app.connection_line.remove()
+	app.connection_line = null
 }
 
 
 function window_onmouseup(evt) {
 
-	if(app.conn_line !== null) {
-		app.conn_start = null
-		app.conn_line.remove()
-		app.conn_line = null
+	if(app.connection_line !== null) {
+		app.connection_src = null
+		app.connection_line.remove()
+		app.connection_line = null
 	}
 }
 
 
 function window_onmousemove(evt) {
 
-	if(app.conn_line !== null) {
+	if(app.connection_line !== null) {
 		const attach = LeaderLine.pointAnchor(document.body, {x: evt.clientX, y: evt.clientY})
-		app.conn_line.end = attach
-		app.conn_line.position()
+		app.connection_line.end = attach
+		app.connection_line.position()
 	}
 }
 
@@ -254,7 +230,7 @@ function node_ondrag(evt) {
 	// this is a plain-draggable.js event, this.element === evt.currentTarget
 	const id = this.element.id
 	for(const conn of app.connections) {
-		if(conn.input.id === id || conn.output.id === id) {
+		if(conn.src_id === id || conn.dst_id === id) {
 			conn.line.position()
 		}
 	}
@@ -268,10 +244,3 @@ function node_onmousedown(evt) {
 }
 
 
-function connection_remove(id) {
-
-	console.log(`#leader-line-${id}-line-path`)
-	const elem = document.querySelector(`#leader-line-${id}-line-path`)
-	const parent = elem.parentNode.parentNode.remove()
-	// parent.remove()
-}
