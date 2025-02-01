@@ -46,6 +46,30 @@ function button_onclick(evt) {
 	else if(op === "channel-merger") {
 		options = { class: "channel-merger" }
 	}
+	else if(op === "stereo-panner") {
+		options = { class: "stereo-panner" }
+	}
+	else if(op === "biquad-filter") {
+		options = { class: "biquad-filter" }
+	}
+	else if(op === "channel-splitter") {
+		options = { class: "channel-splitter" }
+	}
+	else if(op === "convolver") {
+		options = { class: "convolver" }
+	}
+	else if(op === "delay") {
+		options = { class: "delay" }
+	}
+	else if(op === "dynamics-compressor") {
+		options = { class: "dynamics-compressor" }
+	}
+	else if(op === "periodic-wave") {
+		options = { class: "periodic-wave" }
+	}
+	else if(op === "wave-shaper") {
+		options = { class: "wave-shaper" }
+	}
 	else if(op === "analyser") {
 		options = {  class: "analyser" }
 	}

@@ -6,7 +6,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="app.css">
 	<link rel="stylesheet" href="components.css">
-	<title>Image Processing</title>
+	<title>Sounds Processing</title>
 </head>
 <body>
 <div class="ui">
@@ -14,16 +14,24 @@
 		<button data-op="oscillator">Oscillator</button>
 		<button data-op="media-element-source">MESource</button>
 		<button data-op="gain">Gain</button>
-		<button data-op="channel-merger">ChannelMerger</button>
-		<button data-op="analyser">Analyser</button>
+		<button data-op="channel-merger">Channel Merger</button>
+		<button data-op="stereo-panner">Stereo Panner</button>
+		<button data-op="biquad-filter">Biquad Filter</button>
+		<button data-op="channel-splitter">Channel Splitter</button>
+		<button data-op="convolver" disabled>Convolver</button>
+		<button data-op="delay">Delay</button>
+		<button data-op="dynamics-compressor">Dynamics Compressor</button>
+		<button data-op="periodic-wave" disabled>Periodic Wave</button>
+		<button data-op="wave-shaper" disabled>Wave Shaper</button>
+		<button data-op="analyser" disabled>Analyser</button>
 		<button data-op="output">Output</button>
 	</div>
 	<div class="components">
 	</div>
 </div>
-<script defer src="components2.js"></script>
+<script defer src="components.js"></script>
 <script defer src="plain-draggable.min.js"></script>
 <script defer src="leader-line.min.js"></script>
-<script defer src="app2.js"></script>
+<script defer src="app.js"></script>
 </body>
 </html>
